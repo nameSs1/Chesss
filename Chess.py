@@ -4,7 +4,7 @@ import tkinter
 def way_figure( x_start, y_start, type_figure, x_finish, y_finish): #вычисляет путь фигуры от А к Б
     flag_found_way = False # флаг нахождения кратчайшего пути
     short_way = [[x_start, y_start, 0,[]]] #кратчайший путь, [2]: 0-свободна, 1-занята своим, 2 - занята чужим
-    passed_cell = [] # Пройденые клетки          четвертый параметр -- индекс клетки для поиска удачного пути
+    passed_cell = [] # Пройденые клетки          четвертый параметр - индекс клетки для поиска удачного пути
     last_cell = [] # Последняя клетка
     i = 0
     while flag_found_way == False:
