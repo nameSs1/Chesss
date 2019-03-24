@@ -14,13 +14,9 @@ def way_figure( x_start, y_start, type_figure, x_finish, y_finish): #вычис�
             continue
         b =  bust_moves(short_way[i][0],short_way[i][1])
         for a in b:
-            if a in short_way: # для прохода по всем клеткам один раз --- ВКЛ
-                b.remove(a)
-                continue
-            else:
-                a.extend([0, []])
-                a[3].extend(short_way[i][3])
-                a[3].extend([a[0], a[1]])
+            a.extend([0, []])
+            a[3].extend(short_way[i][3])
+            a[3].extend([a[0], a[1]])
         short_way.extend(b)
         i+=1
     i=1
