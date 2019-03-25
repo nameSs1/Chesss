@@ -6,28 +6,16 @@ x_end=None
 y_end=None
 
 
-
-def logic_figure_horse( x_start, y_start, x_end, y_end): # логика поведения фигры "КОНЬ"
-    if abs(x_end-x_start) == 2 and abs(y_end-y_start) == 1:
-        flag=True
-    elif abs(x_end-x_start) == 1 and abs(y_end-y_start) == 2:
-        flag=True
-    else:
-        flag=False
-    return flag
-
 def bust_moves(x_start, y_start): #перебор ходов для фигруры
-    x_end,y_end = range(1,9),range(1,9)
-    moves=[]  # Список возможных ходов
-    not_moves = []
-    for x in x_end:
-        for y in y_end:
-            if logic_figure_horse(x_start, y_start, x, y) == True:
-                moves.append([x, y])
-            else:
-                not_moves.append([x, y])
-            y+=1
-        x+=1
+    xy_end = [(1, 2), (2, 1), (2, -1), (1, -2), (-1, -2), (-2, -1), (-2, 1), (-1, 2)] # список возможных ходов
+    moves=[]  # Список возможных ходов после проверки
+    eight = (1,2,3,4,5,6,7,8)
+    for xy in xy_end:
+        new_x = x_start + xy[0]
+        new_y = y_start + xy[1]
+        if new_x and new_y in eight:
+            moves.append((new_x,new_y))
+
     return moves
 
 def way_figure( x_start, y_start, type_figure, x_finish, y_finish): #вычисляет путь фигуры от А к Б
