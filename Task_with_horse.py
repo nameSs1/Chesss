@@ -22,7 +22,7 @@ def way_figure( x_start, y_start, type_figure, x_finish = None, y_finish = None)
         moves_exit = []  # Варианты ходов на выход.
         while flag_return == True:
             moves = bust_moves(cells[-1]) #получить новые ходы
-            flag_return = False # Если все ОК, то идем дальшей. 
+            flag_return = False # Если все ОК, то идем дальшей.
             for move in moves:  # проветка на повторение.
                 move_list = []
                 move_list.clear()
@@ -58,5 +58,5 @@ def way_figure( x_start, y_start, type_figure, x_finish = None, y_finish = None)
 
     return short_way
 
-way_figure(6,5,1)
+way_figure(1,5,1)
 

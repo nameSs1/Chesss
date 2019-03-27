@@ -22,7 +22,7 @@ def way_figure( x_start, y_start, type_figure, x_finish, y_finish): #вычис�
     i = 0 # счетчик цикла while
     flag_found_way = False # флаг нахождения кратчайшего пути
     short_way = [[(x_start, y_start )]]
-    passed_cell = set() # Пройденые клетки          четвертый параметр - индекс клетки для поиска удачного пути
+    passed_cell = set() # Пройденые клетки
     last_cell = [] # Последняя клетка
     tuple_finish = (x_finish, y_finish)
     len_short = 1
