@@ -56,7 +56,8 @@ def way_figure( x_start, y_start, type_figure, x_finish = None, y_finish = None)
             print(short_way)
             break
 
+    short_way = short_way[0] # По другому возвращает список списка туплов. так дальше не удобно
     return short_way
 
-way_figure(1,5,1)
+
 
