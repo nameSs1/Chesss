@@ -57,11 +57,26 @@ def xy_figure(x ,y , type_figure, size=1): # вычисление координ
             xy[1] = xy[1] * size + 40 + (y - 1) * 50 * size  # y_start позиция фигуры от 1 до 8
         return xy_horse
 
-def draw_figure( x, y, callor_figure, type_figure): # рисует фигуры
-    p.create_polygon(xy_figure( x, y, type_figure), fill = callor_figure, outline='black')
-    # p.create_polygon(xy_figure(x_start,y_start), fill='white', outline='black')
-    # for i in bust_moves(x_start,y_start):
-    #     p.create_polygon(xy_figure(i[0], i[1]), fill='green', outline='black')
+def xy_figure_pixel(x ,y , type_figure = 1): # вычисление координат фигур, xy начальные в пикселях
+    size = 1
+    if type_figure == 1: #считает координаты фигуры "КОНЬ"
+        xy_horse = (
+        [9, 47], [39, 47], [39, 44], [37, 44], [37, 44], [37, 40], [34, 40], [33, 36], [32, 33], [32, 28], [34, 25],
+        [35, 24], [38, 24], [39, 20], [39, 16], [38, 11], [37, 9], [36, 7], [34, 5], [32, 4], [30, 3], [28, 3],
+        [25, 3], [21, 3], [18, 4], [16, 6], [19, 9], [10, 19], [14, 24], [18, 22], [22, 19], [26, 19], [27, 17],
+        [26, 19], [24, 19], [19, 29], [16, 34], [15, 36], [14, 40], [11, 40], [11, 44], [9, 44], [9, 47])
+        for xy in xy_horse:
+            xy[0] = xy[0] * size + 40 + x * size  # x_start позиция фигуры в пикселях!!!
+            xy[1] = xy[1] * size + 40 + y * size  # y_start позиция фигуры в пикселях!!!
+        return xy_horse
+
+def draw_figure( x, y, callor_figure, type_figure, pixel = False): # рисует фигуры, pixel = True если начало в пикселях
+    global figure
+    if pixel == False:
+        figure = p.create_polygon(xy_figure( x, y, type_figure), fill = callor_figure, outline='black')
+    else:
+        figure = p.create_polygon(xy_figure_pixel(x ,y , type_figure) , fill=callor_figure, outline='black')
+    return figure
 
 def draw_board_cell(): #рисует клетки на доске
     i=0
@@ -139,35 +154,37 @@ def settings(): # Параметры приложения
             callor_figure = 'black'
             flag_c = True
 
-def calculation_move_figure (x_start,y_start,x_end,y_end,type_figure=1,callor_figure=1,size_cell=50):
-    # считает движение фигуры из А в Б
+def calculation_move_figure (x_start,y_start,x_end,y_end):
+    # считает движение фигуры из А в Б, возвращает кортеж, сколько пикселей нужно добовлять к х и у за ход
     x_start, y_start =  x_start - 1, y_start -1
     x_end, y_end =  x_end -1, y_end -1
-    type_figure = type_figure
-    callor_figure = callor_figure
-    size_cell = 50 # размер клетки 50 на 50 пикселей по умолчанию
-    modul_x = math.fabs(x_start - x_end) # Модуль разности координат по x
-    modul_y = math.fabs(y_start - y_end)  # Модуль разности координат по y
-    speed_x = modul_x * size_cell / 50  # скорость движения фигуры в пикселях за раз
-    x_list = [int(speed_x) * i + x_start for i in range(int(modul_x * size_cell /speed_x))]
-    x_list.append( x_end * size_cell)
-    speed_y = modul_y * size_cell / 50  # скорость движения фигуры в пикселях за раз
-    y_list = [int(speed_y) * i + y_start for i in range(int(modul_y * size_cell / speed_y))]
-    y_list.append( y_end * size_cell)
-    xy_list = [(x, y_list[x_list.index(x)])    for x in x_list]
-    return xy_list
+    delta_x =  x_end - x_start # Разнсть координат по x
+    delta_y =  y_end - y_start  # Разность координат по y
+    move_tuple = (delta_x, delta_y)
+
+    return move_tuple
 
 
 def draw_move_figure (x_start,y_start,x_end,y_end,type_figure=1,callor_figure = 'white',size_cell=50, task_horse=False):
     # Рисование движения фигуры, если используется для задачи с конем -- task_horse=True
+    global p
     if task_horse == False:
         way = [(x_start, y_start), (x_end, y_end)]
     else:
-        way = calculation_move_figure (x_start,y_start,x_end,y_end,type_figure,callor_figure,size_cell)
-    for xy in way:
-        draw_figure(xy[0], xy[1], callor_figure, type_figure)
-        p.update()
-        time.sleep(2) # Время задержки каждого хода. Может сделать переменную?
+        way = Task_with_horse.way_figure(x_start, y_start, x_end, y_end) #Получаем список ходов
+    figure = draw_figure(way[0][0], way[0][1], callor_figure, type_figure)
+    for m in range(len(way)-1):
+        move_tuple = calculation_move_figure(way[m][0], way[m][1], way[m+1][0], way[m+1][1]) # Получаем список движений
+        for s in range(size_cell): # Рисуем движение от клетки к клетке)
+            p.move(figure, move_tuple[0], move_tuple[1])
+            p.update()
+            time.sleep(0.015) # Время задержки каждого хода. Может сделать переменную?
+        if task_horse == True:
+            p.create_text(15+way[m][0]*size_cell, 15+way[m][1]*size_cell,font=("Purisa", size_cell//2), text = m+1 )
+            p.update()
+        time.sleep(0.4)
+
+
 
 def draw_task_with_horse (x_srart, y_start, x_end, y_end, callor_figure): #Рисует результат задачи с конем
     size_cell = 50 # Размер клетки в пиклесях
@@ -206,7 +223,7 @@ draw_cell_name()
 # print(way_figure( x_start, y_start, type_figure, x_end ,y_end))
 
 # draw_task_with_horse (4, 8, 8, 8, callor_figure)
-draw_move_figure (3,3,5,4)
+draw_move_figure (1,1,5,4, task_horse=True)
 
 
 
