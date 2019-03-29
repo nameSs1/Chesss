@@ -15,6 +15,7 @@ def way_figure( x_start, y_start, type_figure = 1): # Пытается реши�
     short_way = [[(x_start, y_start)]]
     flag_found_way = False
     bad_moves = {}  # Словарь плохихи ходов. Ключ -- предшествующие ходы, значение -- куда ходить после них не стоит.
+    max_move = 0 #для отладки, пишет достигутый ход
 
     def check_moves (cells): # передаются предыдущие ходы, возваращаются возможные из них + словарь плохих ходов.
         cell = cells.copy() # Список предыдущих ходов.
@@ -29,7 +30,10 @@ def way_figure( x_start, y_start, type_figure = 1): # Пытается реши�
                 move_list.clear()
                 move_list = cell.copy()
                 key_move.extend(cell)
+                key_move.append(move)
                 key_move = tuple(key_move)
+                # if len(short_way[-1]) > 62:
+                #     print('Что дальше?')
                 if move in cell:
                     continue
                 elif key_move in bad_moves and bad_moves[key_move] == move:# Проверка на плохой ход.
@@ -39,10 +43,10 @@ def way_figure( x_start, y_start, type_figure = 1): # Пытается реши�
                     moves_exit.append(move_list)
             if len(moves_exit) == 0: # Проверка, остались ли ходы.
                 flag_return = True   # Тогда поднимаем флаг снова.
-                key_cell = tuple(cell[:-1]) # Делаем ключь для bad_moves.update   .
+                key_cell = tuple(cell) # Делаем ключь для bad_moves.update   .
                 bad_moves.update([(key_cell, tuple(cell[-1]))]) # Добовляем плохой ход в словарь плохих ходов.
                 cell = cell[:-1]   # Возвращаемся на один ход назад.
-                print(len(cell))
+                # print(len(cell))
 
         return moves_exit, bad_moves
 
@@ -56,7 +60,10 @@ def way_figure( x_start, y_start, type_figure = 1): # Пытается реши�
         short_way.clear()
         min_from_new_list_moves = min(new_list_moves)
         short_way.append(min_from_new_list_moves)
-        if len(short_way[-1]) > 55:     # Проверка на количество ходов
+        if max_move < len(short_way[-1]):
+            max_move = len(short_way[-1])
+            print(max_move)
+        if len(short_way[-1]) > 62:     # Проверка на количество ходов
             flag_found_way = True
             print(short_way)
             break
