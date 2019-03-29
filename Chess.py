@@ -178,11 +178,11 @@ def draw_move_figure (x_start,y_start,x_end,y_end,type_figure=1,callor_figure = 
         for s in range(size_cell): # Рисуем движение от клетки к клетке)
             p.move(figure, move_tuple[0], move_tuple[1])
             p.update()
-            time.sleep(0.015) # Время задержки каждого хода. Может сделать переменную?
+            time.sleep(0.005) # Время задержки каждого хода. Может сделать переменную?
         if task_horse == True:
             p.create_text(15+way[m][0]*size_cell, 15+way[m][1]*size_cell,font=("Purisa", size_cell//2), text = m+1 )
             p.update()
-        time.sleep(0.4)
+        time.sleep(0.3)
 
 
 
@@ -223,7 +223,7 @@ draw_cell_name()
 # print(way_figure( x_start, y_start, type_figure, x_end ,y_end))
 
 # draw_task_with_horse (4, 8, 8, 8, callor_figure)
-draw_move_figure (1,8,5,4,task_horse=True)
+draw_move_figure (1,8,5,4,task_horse=True)   #(1,5)
 
 
 
