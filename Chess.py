@@ -171,7 +171,7 @@ def draw_move_figure (x_start,y_start,x_end,y_end,type_figure=1,callor_figure = 
     if task_horse == False:
         way = [(x_start, y_start), (x_end, y_end)]
     else:
-        way = Task_with_horse.way_figure(x_start, y_start, x_end, y_end) #Получаем список ходов
+        way = Task_with_horse.way_figure(x_start, y_start) #Получаем список ходов
     figure = draw_figure(way[0][0], way[0][1], callor_figure, type_figure)
     for m in range(len(way)-1):
         move_tuple = calculation_move_figure(way[m][0], way[m][1], way[m+1][0], way[m+1][1]) # Получаем список движений
@@ -223,7 +223,7 @@ draw_cell_name()
 # print(way_figure( x_start, y_start, type_figure, x_end ,y_end))
 
 # draw_task_with_horse (4, 8, 8, 8, callor_figure)
-draw_move_figure (1,1,5,4, task_horse=True)
+draw_move_figure (4,8,5,4, task_horse=True)
 
 
 
