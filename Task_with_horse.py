@@ -1,6 +1,6 @@
 def bust_moves(cells): #перебор ходов для фигруры
     xy_start = cells
-    xy_end = [(1, 2), (2, 1), (2, -1), (1, -2), (-1, -2), (-2, -1), (-2, 1), (-1, 2)] # список возможных ходов
+    xy_end = ((1, 2), (2, 1), (2, -1), (1, -2), (-1, -2), (-2, -1), (-2, 1), (-1, 2)) # список возможных ходов
     moves=[]  # Список возможных ходов после проверки
     for xy in xy_end:
         new_x = xy_start[0] + xy[0]
@@ -32,8 +32,6 @@ def way_figure( x_start, y_start, type_figure = 1): # Пытается реши�
                 key_move.extend(cell)
                 key_move.append(move)
                 key_move = tuple(key_move)
-                # if len(short_way[-1]) > 61:
-                #     print('Что дальше?')
                 if move in cell:
                     continue
                 elif key_move in bad_moves :# Проверка на плохой ход.
