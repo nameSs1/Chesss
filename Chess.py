@@ -223,7 +223,7 @@ draw_cell_name()
 # print(way_figure( x_start, y_start, type_figure, x_end ,y_end))
 
 # draw_task_with_horse (4, 8, 8, 8, callor_figure)
-draw_move_figure (5,1,5,4,task_horse=True)   #(1,5), (2,7) (3,1)(3,5)! (5,1)
+draw_move_figure (5,1,5,4,task_horse=True)   #(1,5), (2,7) (3,1)(3,5)! (5,1) (5,4) 5,6 -- MemoryError
 
 
 
