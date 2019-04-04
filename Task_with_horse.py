@@ -64,7 +64,7 @@ def check_way_figure():  #Проверка way_figure
     print('Общее время расчета: ' + str(round((all_end - all_start), 3)) + ' секунд')
 
 
-check_way_figure()
+
 
 
 
