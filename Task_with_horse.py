@@ -1,3 +1,8 @@
+class bad_dict(dict): #Класс для словаря плохих ходов. Если вызывается отсутствующий ключ, то возвращает [].
+    def __missing__(self, key):
+        zero_list = []
+        return zero_list
+
 def bust_moves(cells): #перебор ходов для фигруры
     xy_start = cells
     xy_end = ((1, 2), (2, 1), (2, -1), (1, -2), (-1, -2), (-2, -1), (-2, 1), (-1, 2)) # список возможных ходов
@@ -14,7 +19,7 @@ def way_figure( x_start, y_start, type_figure = 1): # Пытается реши�
 
     short_way = [[(x_start, y_start)]]
     flag_found_way = False
-    bad_moves = dict () # Словарь плохихи ходов. {ход, (X,Y):  ходы куда ходить неи смысла}
+    bad_moves = bad_dict() # Словарь плохихи ходов. {ход, (X,Y):  [ ходы куда ходить неt смысла]}
     max_move = 0 #для отладки, пишет достигутый ход
 
     def check_moves (cells): # передаются предыдущие ходы, возваращаются возможные из них + словарь плохих ходов.
@@ -30,15 +35,22 @@ def way_figure( x_start, y_start, type_figure = 1): # Пытается реши�
                 move_list.clear()
                 move_list = cell.copy()
                 key_move.extend(cell)
+                # вввв = ((len(cell)), move)
+                # sdfdsf = bad_moves[(len(cell), move)]
                 key_move.append(move)
                 key_move = tuple(key_move)
-                if move not in cell and key_move not in bad_moves:
+                # print(move)
+                # print(bad_moves)
+                print((len(cell), cell[-1]))
+                if move not in cell and move not in bad_moves[(len(cell), cell[-1])] : #Проверяем на повтори в ловаре плохих ходов
                     move_list.append(move)
                     moves_exit.append(move_list)
             if len(moves_exit) == 0: # Проверка, остались ли ходы.
                 flag_return = True   # Тогда поднимаем флаг снова.
-                key_cell = tuple(cell) # Делаем ключь для bad_moves.update   .
-                bad_moves.add(key_cell)# Добовляем плохой ход в множество плохих ходов.
+                if (((len(cell)) - 1), cell[-2]) in bad_moves:  #
+                    bad_moves[((len(cell)) - 1), cell[-2]].append(cell[-1])
+                else:
+                    bad_moves.setdefault((((len(cell)) - 1), cell[-2]), [cell[-1]])
                 cell.pop()   # Возвращаемся на один ход назад.
                 # print(len(cell))
 
