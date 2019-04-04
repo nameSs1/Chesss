@@ -1,10 +1,5 @@
-class bad_dict(dict): #Класс для словаря плохих ходов. Если вызывается отсутствующий ключ, то возвращает [].
-    def __missing__(self, key):
-        zero_list = []
-        return zero_list
-
-def bust_moves(cells): #перебор ходов для фигруры
-    xy_start = cells
+import time
+def bust_moves(xy_start): #перебор ходов для фигруры
     xy_end = ((1, 2), (2, 1), (2, -1), (1, -2), (-1, -2), (-2, -1), (-2, 1), (-1, 2)) # список возможных ходов
     moves=[]  # Список возможных ходов после проверки
     for xy in xy_end:
@@ -15,71 +10,69 @@ def bust_moves(cells): #перебор ходов для фигруры
                 moves.append((new_x,new_y))
     return moves
 
+
+
+
+
 def way_figure( x_start, y_start, type_figure = 1): # Пытается решить задачу коня
-
-    short_way = [[(x_start, y_start)]]
+    xy_start = (x_start, y_start)
+    reached_cells = [xy_start] #пройденые клетки
+    list_moves = []   # инфа каждого хода, для возврата назад
+    first_move = bust_moves(xy_start) # Делаем превый ход
+    list_moves.append(first_move)   # Делаем превый ход, добовляется список возможных ходов из первой клетки
     flag_found_way = False
-    bad_moves = bad_dict() # Словарь плохихи ходов. {ход, (X,Y):  [ ходы куда ходить неt смысла]}
-    max_move = 0 #для отладки, пишет достигутый ход
-
-    def check_moves (cells): # передаются предыдущие ходы, возваращаются возможные из них + словарь плохих ходов.
-        cell = cells.copy() # Список предыдущих ходов.
-        moves = []  #  Ходы куда в теории можно пойти перед проверкой.
-        flag_return = True  # Флаг если не один ход не прошел проверку, то надо вернуться.
-        moves_exit = []  # Варианты ходов на выход.
-        while flag_return:
-            moves = bust_moves(cell[-1]) #получить новые ходы
-            flag_return = False # Если все ОК, то идем дальшей.
-            for move in moves:  # проветка на повторение.
-                move_list, key_move = [], []
-                move_list.clear()
-                move_list = cell.copy()
-                key_move.extend(cell)
-                # вввв = ((len(cell)), move)
-                # sdfdsf = bad_moves[(len(cell), move)]
-                key_move.append(move)
-                key_move = tuple(key_move)
-                # print(move)
-                # print(bad_moves)
-                print((len(cell), cell[-1]))
-                if move not in cell and move not in bad_moves[(len(cell), cell[-1])] : #Проверяем на повтори в ловаре плохих ходов
-                    move_list.append(move)
-                    moves_exit.append(move_list)
-            if len(moves_exit) == 0: # Проверка, остались ли ходы.
-                flag_return = True   # Тогда поднимаем флаг снова.
-                if (((len(cell)) - 1), cell[-2]) in bad_moves:  #
-                    bad_moves[((len(cell)) - 1), cell[-2]].append(cell[-1])
-                else:
-                    bad_moves.setdefault((((len(cell)) - 1), cell[-2]), [cell[-1]])
-                cell.pop()   # Возвращаемся на один ход назад.
-                # print(len(cell))
-
-        return moves_exit, bad_moves
-
+    i = 0 #счетчик хода/волны
     while not flag_found_way:
-        new_list_moves = []  # Список путей, из которого ввыбирается следующий ход, по правилу Варнсдорфа.
-        for cells in short_way:
-            moves_exit_get, bad_moves_get = check_moves(cells) # Получаем возможные ходы и словарь плохих.
-            bad_moves.update(bad_moves_get) # Обновляем словарь плохих ходов.
-            new_list_moves.extend(moves_exit_get)  # Список возможных путей заносим в new_list_moves для проверки мин.
-        len_len = len(short_way[-1]) #Для отладки
-        short_way.clear()
-        if 63 > len_len: #Для отладки
-
-            min_from_new_list_moves = min(new_list_moves)
-        else:
-            min_from_new_list_moves   = new_list_moves[0]   # Для отладки
-        short_way.append(min_from_new_list_moves)
-        if max_move < len(short_way[-1]):   #Для отладки
-            max_move = len(short_way[-1])
-            print(max_move)
-        if len(short_way[-1]) > 63:     # Проверка на количество ходов
-            flag_found_way = True
-            print(short_way)
+        if len(reached_cells) == 63:
+            reached_cells.append(list_moves[-1][0])
             break
+        new_list = [] # Список для выбора след хода по правилу
+        for cell in list_moves[i]: # cell -- tuple из списка возможных ходов предыдущей клетки
+            ways = bust_moves(cell) # для каждой такой клетки узнаем возможные ходы
+            ways = [ w for w in ways if w not in reached_cells] # теперь нужно их проверить
+            if len(ways)!= 0:
+                ways.append(cell) # Сell в списке на последнем месте !!!
+                new_list.append(ways)
+        if len(new_list) == 0:
+            list_moves.pop(i)
+            reached_cells.pop()
+            i -=1
+            continue
+        L = len(new_list[0])          # Вычисляем короткий список
+        best_list = new_list[0]       # Вычисляем короткий список
+        for sub_list in new_list:     # Вычисляем короткий список
+            if len(sub_list) < L:     # Вычисляем короткий список
+                L = len(sub_list)     # Вычисляем короткий список
+                best_list = sub_list  # Вычисляем короткий список
+        new_cell = best_list          # Вычисляем короткий список
+        list_moves[i].remove(new_cell[-1]) # удаляем выбраную клетку из возможных для предыдущего хода, на случ возврата)
+        reached_cells.append(new_cell[-1])
+        new_cell.pop()
+        list_moves.append(new_cell)
+        i +=1
 
-    short_way = short_way[0] # По другому возвращает список списка туплов. так дальше не удобно
-    return short_way
+    return reached_cells
+
+def check_way_figure():  #Проверка way_figure
+    all_start = time.time()
+    for x in range(1,9):
+        for y in range(1,9):
+            way = way_figure(x,y)
+            print('       Начальная точка: ' +str((x,y)))
+            print('Список ходов: ' + str(way))
+    all_end = time.time()
+    print('Общее время расчета: ' + str(round((all_end - all_start), 3)) + ' секунд')
+
+
+check_way_figure()
+
+
+
+
+
+
+
+
 
 
 
