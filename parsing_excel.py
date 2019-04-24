@@ -31,7 +31,7 @@ def get_time(string):
 def parser_excel(excel_file):
     days = []  # Спиоск дней
     type_comp = []  # Список соревнований
-    list_results= []  # Список результатов
+    list_results = []  # Список результатов
     list_rang = []  # Список разрадов
     for i, string in enumerate(excel_file, start=1):
         count_none = 0
@@ -65,26 +65,36 @@ def parser_excel(excel_file):
                 points = int(string[8])
             else:
                 points = None
-            sportsman = [
-                i,  # id Результата
-                name,  # Имя
-                surname,  # Фамилия
-                string[2],  # Год рождения
-                string[3],
-                string[6],
-                city,  # Город
-                club,  # Клуб, если есть. Если нет -- None
-                string[0],  # Место
-                string[5],  # Результат
-                points,  # Очки
-                days[-1],  # День соревнований
-                type_comp[-1]  # Тип соревнований
-            ]
+            time = get_time(string[5])
+            keys = ('name', 'surname', 'year', 'old_rang', 'new_rang', 'city', 'club', 'place', 'time', 'points', 'day', 'type')
+            values = (name, surname, string[2], string[3], string[6], city, club, string[0], time, points, days[-1], type_comp[-1])
+            sportsman = dict.fromkeys(keys, values)
             list_results.append(sportsman)
 
-    return list_results
+    return list_results, days, type_comp, list_rang
 
-list_results = parser_excel(excel_file)
+results = parser_excel(excel_file)  # return list_results, days, type_comp, list_rang
+
+
+def remaining_tables(results):
+    days = results[1]
+    create_table_days_str = 'create table table_days (id_day int primary key identity, day nvarchar(10), unique(day))'
+    try:
+        cursor_sql_server.execute(create_table_days_str)
+    except (pyodbc.ProgrammingError):
+        print('Таблица table_days уже создана')
+    conn_sql_server.commit()
+    for day in days:
+        insert_table_days_str = "insert into table_days (day) values ('{}')".format(day)
+        try:
+            cursor_sql_server.execute(insert_table_days_str)
+        except(pyodbc.IntegrityError):
+            pass
+        conn_sql_server.commit()
+
+
+
+remaining_tables(results)
 
 
 def insert_data(list_results):  # Обработка данных полученых из Excel
@@ -122,7 +132,7 @@ def insert_data(list_results):  # Обработка данных получен
 
 
 
-insert_data(list_results)
+# insert_data(list_results)
 conn_excel.close()
 conn_sql_server.close()
 
