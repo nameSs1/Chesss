@@ -28,6 +28,17 @@ def get_time(string):
         return None
 
 
+def rang_pars (rang_str):  # Прреобразует разряды к одному типу
+    if rang_str is None:
+        return None
+    elif type(rang_str) is int:
+        return str(rang_str)
+    elif type(rang_str) is float:
+        return str(int(rang_str))
+    else:
+        return rang_str
+
+
 def parser_excel(excel_file):
     days = []  # Спиоск дней
     type_comp = []  # Список соревнований
@@ -49,10 +60,12 @@ def parser_excel(excel_file):
             old_name = string[1].split()
             name = old_name[0]
             surname = old_name[1]
-            if string[3] not in list_rang:
-                list_rang.append(string[3])
-            if string[6] not in list_rang:
-                list_rang.append(string[6])
+            old_rang = rang_pars(string[3])
+            new_rang = rang_pars(string[6])
+            if old_rang not in list_rang:
+                list_rang.append(old_rang)
+            if new_rang not in list_rang:
+                list_rang.append(new_rang)
             city_club = string[4].split(',', 1)
             city = city_club[0]
             if len(city_club) == 2:
@@ -67,18 +80,29 @@ def parser_excel(excel_file):
                 points = None
             time = get_time(string[5])
             keys = ('name', 'surname', 'year', 'old_rang', 'new_rang', 'city', 'club', 'place', 'time', 'points', 'day', 'type')
-            values = (name, surname, string[2], string[3], string[6], city, club, string[0], time, points, days[-1], type_comp[-1])
-            sportsman = dict.fromkeys(keys, values)
+            values = (surname, name, string[2], old_rang, new_rang, city, club, string[0], time, points, days[-1], type_comp[-1])
+            sportsman = {k: v for k, v in zip(keys, values)}
             list_results.append(sportsman)
-
     return list_results, days, type_comp, list_rang
-
-results = parser_excel(excel_file)  # return list_results, days, type_comp, list_rang
 
 
 def remaining_tables(results):
-    days = results[1]
-    create_table_days_str = 'create table table_days (id_day int primary key identity, day nvarchar(10), unique(day))'
+    list_gender = ('male', 'famale')  # Список полов
+    create_table_gender_str = 'create table table_gender (id_gender int primary key identity, gender varchar(10) unique)'
+    try:
+        cursor_sql_server.execute(create_table_gender_str)
+    except (pyodbc.ProgrammingError):
+        pass
+    conn_sql_server.commit()
+    for gender in list_gender:
+        insert_table_gender_str = "insert into table_gender (gender) values ('{}')".format(gender)
+        try:
+            cursor_sql_server.execute(insert_table_gender_str)
+        except (pyodbc.IntegrityError):
+            pass
+        conn_sql_server.commit()
+    days = results[1]  # Таблица дней
+    create_table_days_str = 'create table table_days (id_day int primary key identity, day nvarchar(10) unique)'
     try:
         cursor_sql_server.execute(create_table_days_str)
     except (pyodbc.ProgrammingError):
@@ -91,10 +115,60 @@ def remaining_tables(results):
         except(pyodbc.IntegrityError):
             pass
         conn_sql_server.commit()
-
-
-
-remaining_tables(results)
+    styles = [type_swim[1] for type_swim in results[2]]  # Список стилей плавонья
+    styles = list(set(styles))
+    create_table_styles_str = 'create table table_styles (id_style int primary key identity, style nvarchar(10) unique)'
+    try:
+        cursor_sql_server.execute(create_table_styles_str)
+    except (pyodbc.ProgrammingError):
+        print('Таблица table_styles уже создана')
+    conn_sql_server.commit()
+    for style in styles:
+        insert_table_style_str = "insert into table_styles (style) values ('{}')".format(style)
+        try:
+            cursor_sql_server.execute(insert_table_style_str)
+        except(pyodbc.IntegrityError):
+            pass
+        conn_sql_server.commit()
+    type_comp = results[2]  # Таблица соревнований
+    create_table_type_comp_str = 'create table type_comp (id_comp int primary key identity, distance int,' \
+                                 ' style varchar(10), gender int, age int)'
+    try:
+        cursor_sql_server.execute(create_table_type_comp_str)
+    except (pyodbc.ProgrammingError):
+        print('Таблица type_comp уже создана')
+    conn_sql_server.commit()
+    for type in type_comp:
+        if type[2] == 'девочки':
+            gender = 'famale'
+        elif type[2] == 'мальчики':
+            gender = 'male'
+        select_gender_table_type_comp_str = "select id_gender from table_gender where gender='{}'".format(gender)
+        cursor_sql_server.execute(select_gender_table_type_comp_str)
+        id_gender = cursor_sql_server.fetchone()[0]
+        select_style_table_styles_comp_str = "select id_style from table_styles where style='{}'".format(type[1])
+        cursor_sql_server.execute(select_style_table_styles_comp_str)
+        style = cursor_sql_server.fetchone()[0]
+        age = int(type[3][0:4])
+        insert_table_type_comp_str = "insert into type_comp (distance, style, gender, age)" \
+                                     "values ({}, '{}', {}, {})".format(type[0], style, id_gender, age)
+        cursor_sql_server.execute(insert_table_type_comp_str)
+        conn_sql_server.commit()
+    list_rang = results[3]  # Список разрядов
+    list_rang.remove(None)
+    create_table_rangs_str = 'create table type_rangs (id_rang int primary key identity, rang varchar(4) unique)'
+    try:
+        cursor_sql_server.execute(create_table_rangs_str)
+    except (pyodbc.ProgrammingError):
+        print('Таблица type_rangs уже создана')
+    conn_sql_server.commit()
+    for rang in list_rang:
+        insert_table_rangs_str = "insert into type_rangs (rang) values ('{}')".format(rang)
+        try:
+            cursor_sql_server.execute(insert_table_rangs_str)
+        except (pyodbc.IntegrityError):
+            pass
+        conn_sql_server.commit()
 
 
 def insert_data(list_results):  # Обработка данных полученых из Excel
@@ -130,8 +204,8 @@ def insert_data(list_results):  # Обработка данных получен
         conn_sql_server.commit()
 
 
-
-
+results = parser_excel(excel_file)  # return list_results, days, type_comp, list_rang
+# remaining_tables(results)
 # insert_data(list_results)
 conn_excel.close()
 conn_sql_server.close()
