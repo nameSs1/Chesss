@@ -63,7 +63,13 @@ def parser_excel_first_type (excel_file):
             event['title_event'] += string[0]
             continue
         elif i == 4:
-            event['date_event'] = string[1][6:13]
+            date_start = string[1][:2]  # Преобразавания даты в формат ГГГГ-ММ-ДД
+            date_event = string[1][5:13]
+            date_event = date_start + date_event
+            date_event = date_event.split('.')
+            date_event.reverse()
+            date_event = '-'.join(date_event)
+            event['date_event'] = date_event
             event['city_event'] = string[1][-7:]
             event['pool'] = int(string[6].split()[1])
             continue
@@ -92,7 +98,7 @@ def parser_excel_first_type (excel_file):
             city_club = string[4].split(',', 1)
             city = city_club[0]
             if len(city_club) == 2:
-                club = city_club[1]
+                club = city_club[1].lstrip()
             else:
                 club = None
             time = get_time(string[5])
@@ -100,8 +106,11 @@ def parser_excel_first_type (excel_file):
             new_rank = rang_pars(string[6])
             if ranks.index(rank) < ranks.index(new_rank):
                 rank = new_rank
-            keys = ('firstname', 'lastname', 'birth_year', 'rank', 'city', 'club', 'time')
+            keys = ['firstname', 'lastname', 'birth_year', 'rank', 'city', 'club', 'time']
             values = (name[1], name[0], year, rank, city, club, time)
+            if club == 'Латвия':
+                keys[5] = 'country'
+                club = 'LAT'
             result = {k: v for k, v in zip(keys, values) if v is not None}
             result.update(competition)
             result.update(event)
@@ -109,15 +118,17 @@ def parser_excel_first_type (excel_file):
     return results
 
 
-def insert_ranks(ranks):  # Таблица rank, колонка rank_value
+def insert_ranks(ranks):  # Таблица rank, колонка rank_value, primary_right
+    primary_right = 0
     for rank in ranks:
-        insert_rank_str = "insert into rank (rank_value) values ('{}')".format(rank)
+        insert_rank_str = "insert into rank (rank_value, primary_right) values ('{}', '{}')".format(rank, primary_right)
         try:
             cursor_sql_server.execute(insert_rank_str)
         except (pyodbc.IntegrityError):
             str_error = "Ошибка при добовлении разряда {} в таблицу rank!".format(rank)
             print(str_error)
         conn_sql_server.commit()
+        primary_right += 1
 
 
 def insert_gender():
@@ -211,6 +222,46 @@ def insert_city(results):  # Таблица city , колонки title_city и 
                 continue
 
 
+def insert_club(results):  # Таблица club, колонки title_club и city_id
+    clubs = {(result['club'], result['city']) for result in results if 'club' in result}
+    clubs = list(clubs)
+    if len(clubs):
+        for club in clubs:
+            select_str = "select city_id from city where title_city='{}'".format(club[1])
+            cursor_sql_server.execute(select_str)
+            answer = cursor_sql_server.fetchone()[0]
+            insert_str = "insert into club (title_club, city_id) values ('{}', '{}')".format(club[0], answer)
+            try:
+                cursor_sql_server.execute(insert_str)
+            except (pyodbc.IntegrityError):
+                str_error = "Ошибка при добовлении club '{}' в таблицу club!".format(club[0])
+                print(str_error)
+            conn_sql_server.commit()
+
+
+def insert_event(results):  # Таблица event, колонки title_event, date_event, city_id, pool
+    events = {(result['title_event'], result['date_event'], result['city_event'], result['pool']) for result in results}
+    events = list(events)
+    # [('Итоговы ... ти Героя Советского Союза М.Ф.Шмырёва', '2019-04-10', 'Витебск', 25)]
+    if len(events):
+        for event in events:
+            select_str = "select city_id from city where title_city='{}'".format(event[2])
+            cursor_sql_server.execute(select_str)
+            answer = cursor_sql_server.fetchone()
+            if answer is None:
+                insert_str = "insert into city (title_city) values ('{}')".format(event[2])
+                cursor_sql_server.execute(insert_str)
+                conn_sql_server.commit()
+                select_str = "select city_id from city where title_city='{}'".format(event['city_event'])
+                cursor_sql_server.execute(select_str)
+                answer = cursor_sql_server.fetchone()
+                city_id = answer[0]
+            else:
+                city_id = answer[0]
+            insert_str = "insert into event (title_event, date_event, city_id, pool) values ('{}', '{}', '{}', '{}'" \
+                         ")".format(event[0], event[1], city_id, event[3])
+            cursor_sql_server.execute(insert_str)
+            conn_sql_server.commit()
 
 
 
@@ -238,4 +289,6 @@ def insert_city(results):  # Таблица city , колонки title_city и 
 
 results = parser_excel_first_type (excel_file)
 # insert_style(results)
-insert_city(results)
+# insert_city(results)
+# insert_club(results)
+# insert_event(results)
