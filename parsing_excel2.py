@@ -134,11 +134,11 @@ def insert_ranks(ranks):  # Таблица rank, колонка rank_value, prim
 def insert_gender():
     gender_list = ('М', 'Ж')
     for gender in gender_list:
-        insert_gender_str = "insert into gender (gender) values ('{}')".format(gender)
+        insert_gender_str = "insert into gender (title_gender) values ('{}')".format(gender)
         try:
             cursor_sql_server.execute(insert_gender_str)
         except (pyodbc.IntegrityError):
-            str_error = "Ошибка при добовлении gender '{}' в таблицу gender!".format(gender)
+            str_error = "Ошибка при добовлении title_gender '{}' в таблицу gender!".format(gender)
             print(str_error)
         conn_sql_server.commit()
 
@@ -157,7 +157,7 @@ def insert_style(results):  # Таблица style, колонка title_style
 
 
 def insert_country(results):  # Таблица country
-    countries = {result['country'] for result in results}
+    countries = {result['country'] for result in results if 'country' in result}
     if len(countries) != 0:
         countries = list(countries)
         for country in countries:
@@ -216,8 +216,8 @@ def insert_city(results):  # Таблица city , колонки title_city и 
                 select_str = "select country_id from country where abbreviation='{}'".format(country)
                 cursor_sql_server.execute(select_str)
                 answer = cursor_sql_server.fetchone()[0]
-                insert_str = "insert into city (country_id) values ('{}')".format(answer)
-                cursor_sql_server.execute(insert_str)
+                update_str = "update city set country_id = '{}' where title_city = '{}'".format(answer, city)
+                cursor_sql_server.execute(update_str)
                 conn_sql_server.commit()
                 continue
 
@@ -281,7 +281,7 @@ def insert_competition(results):  # competition_id, gender_id, distance, style_i
             select_str = "select gender_id from gender where title_gender='{}'".format(comp[0])
             cursor_sql_server.execute(select_str)
             gender_id = cursor_sql_server.fetchone()[0]
-            select_str = "select style_id from style where style='{}'".format(comp[2])
+            select_str = "select style_id from style where title_style='{}'".format(comp[2])
             cursor_sql_server.execute(select_str)
             style_id = cursor_sql_server.fetchone()[0]
             sel_str = "select event_id from event where title_event='{}' and date_event='{}'".format(comp[5], comp[6])
@@ -289,7 +289,7 @@ def insert_competition(results):  # competition_id, gender_id, distance, style_i
             event_id = cursor_sql_server.fetchone()[0]
             insert_str = "insert into competition (gender_id, distance, style_id, birth_year, event_id, day) " \
                          "values ('{}', '{}', '{}', '{}', '{}', '{}'" \
-                         ")".format(gender_id, comp[1], style_id, comp[3], event_id, comp[4])
+                         ")".format(gender_id, comp[1], style_id, int(comp[3]), event_id, comp[4])
             try:
                 cursor_sql_server.execute(insert_str)
             except (pyodbc.IntegrityError):
@@ -321,7 +321,7 @@ def insetr_person(results):  # firstname, lastname, gender_id, birth_year, rank_
         gender_id = cursor_sql_server.fetchone()[0]
         person_values = [person['firstname'], person['lastname'], person['birth_year'], gender_id]
         if 'rank' in person:
-            person_key.append('rank')
+            person_key.append('rank_id')
             select_str = "select rank_id from rank where rank_value='{}'".format(person['rank'])
             cursor_sql_server.execute(select_str)
             rank_id = cursor_sql_server.fetchone()[0]
@@ -347,62 +347,129 @@ def insetr_person(results):  # firstname, lastname, gender_id, birth_year, rank_
 
         key_str = ', '.join(person_key)
         values_str = tuple(person_values)
-        insert_str = "insert into results ({}) values {}".format(key_str, values_str)
+        insert_str = "insert into person ({}) values {}".format(key_str, values_str)
         try:
             cursor_sql_server.execute(insert_str)
         except (pyodbc.IntegrityError):  # Если персон уже eсть, то пробуем обновить разряд
             i_error += 1
             if 'rank' in person:
-                sel = "select person_id, rank_id from person where {} ='{}' and {} ='{}' and {} ='{}' and {} ='{}'" \
-                      " and {} ='{}'".format(person_key[0], person_values[0],
-                                             person_key[1], person_values[1],
-                                             person_key[2], person_values[2],
-                                             person_key[-2], person_values[-2],
-                                             person_key[-1], person_values[-1])
+                if 'club' in person:
+                    sel = "select person_id, rank_id from person where {} ='{}'and {} ='{}'and {} ='{}' and {} ='{}'" \
+                          " and {} ='{}'".format(person_key[0], person_values[0],
+                                                 person_key[1], person_values[1],
+                                                 person_key[2], person_values[2],
+                                                 person_key[-2], person_values[-2],
+                                                 person_key[-1], person_values[-1])
+                else:
+                    sel = "select person_id, rank_id from person where {} ='{}'and {} ='{}'and {} ='{}' and {} ='{}'" \
+                          "".format(person_key[0], person_values[0],
+                                    person_key[1], person_values[1],
+                                    person_key[2], person_values[2],
+                                    person_key[-1], person_values[-1])
                 cursor_sql_server.execute(sel)
-                person_id = cursor_sql_server.fetchone()[0]  # Узнали ID
-                old_rank_id = cursor_sql_server.fetchone()[1]
-                sel = "select primary_right from rank where rank_id = '{}'".format(old_rank_id)
+                row = cursor_sql_server.fetchone()
+                person_id = int(row.person_id)
+                old_rank_id = row.rank_id
+                if old_rank_id is None:
+                    primary_old_rank = 0
+                else:
+                    sel = "select primary_right from rank where rank_id = '{}'".format(old_rank_id)
+                    cursor_sql_server.execute(sel)
+                    primary_old_rank = int(cursor_sql_server.fetchone()[0])
+                sel = "select primary_right, rank_id from rank where rank_value = '{}'".format(person['rank'])
                 cursor_sql_server.execute(sel)
-                primary_old_rank = int(cursor_sql_server.fetchone()[0])
-                sel = "select primary_right from rank where rank_id = '{}'".format(rank_id)
-                cursor_sql_server.execute(sel)
-                primary_new_rank = int(cursor_sql_server.fetchone()[0])
+                row = cursor_sql_server.fetchone()
+                primary_new_rank = int(row.primary_right)
+                new_rank_id = int(row.rank_id)
                 if primary_new_rank > primary_old_rank:
                     update_str = "update person set rank_id = '{}' where person_id = '{}'" \
-                                 "".format(rank_id, person_id)
+                                 "".format(new_rank_id, person_id)
                     cursor_sql_server.execute(update_str)
         conn_sql_server.commit()
 
 
+def insert_result(results):  # result_id, person_id, time, competition_id
+
+    def select_city_id(title_city):  # Узнает city_id по названию города
+        sel = "select city_id from city where title_city = '{}'".format(title_city)
+        cursor_sql_server.execute(sel)
+        row = cursor_sql_server.fetchone()
+        city_id = int(row.city_id)
+        return city_id
+
+    def select_club_id(title_club):  # Узнает club_id по названию club
+        sel = "select club_id from club where title_club= '{}'".format(title_club)
+        cursor_sql_server.execute(sel)
+        row = cursor_sql_server.fetchone()
+        club_id = int(row.club_id)
+        return club_id
+
+    for result in results:
+        if 'city' not in result and 'club' in result:
+            club_id = select_club_id(result['city'])
+            select = "select person_id from person where {} ='{}' and {} ='{}' and {} ='{}' and {} ='{}'" \
+                     "".format('firstname', result['firstname'],
+                               'lastname', result['lastname'],
+                               'birth_year', result['birth_year'],
+                               'club_id', club_id)
+        elif 'city' in result and 'club' not in result:
+            city_id = select_city_id(result['city'])
+            select = "select person_id from person where {} ='{}' and {} ='{}' and {} ='{}' and {} ='{}'" \
+                     "".format('firstname', result['firstname'],
+                               'lastname', result['lastname'],
+                               'birth_year', result['birth_year'],
+                               'city_id', city_id)
+        else:
+            city_id = select_city_id(result['city'])
+            club_id = select_club_id(result['club'])
+            select = "select person_id from person where {} ='{}' and {} ='{}' and {} ='{}' and {} ='{}' and {} ='{}'" \
+                     "".format('firstname', result['firstname'],
+                               'lastname', result['lastname'],
+                               'birth_year', result['birth_year'],
+                               'city_id', city_id,
+                               'club_id', club_id)
+        cursor_sql_server.execute(select)  # Узнаем person_id
+        person_id = int(cursor_sql_server.fetchone()[0])
+        select_str = "select gender_id from gender where title_gender='{}'".format(result['gender'])
+        cursor_sql_server.execute(select_str)
+        gender_id = cursor_sql_server.fetchone()[0]
+        select_str = "select style_id from style where title_style='{}'".format(result['style'])
+        cursor_sql_server.execute(select_str)
+        style_id = cursor_sql_server.fetchone()[0]
+        select_str = "select event_id from event where title_event = '{}' and date_event = '{}'" \
+                     "".format(result['title_event'], result['date_event'])
+        cursor_sql_server.execute(select_str)
+        event_id = cursor_sql_server.fetchone()[0]
+        select = "select competition_id from competition where {} ='{}' and {} ='{}' and {} ='{}' and {} ='{}' and " \
+                 "{} ='{}' and {} ='{}'".format('gender_id', gender_id,
+                                                'distance', result['distance'],
+                                                'style_id', style_id,
+                                                'birth_year', result['birth_year_comp'],
+                                                'day', result['day_comp'],
+                                                'event_id', event_id)
+        cursor_sql_server.execute(select)
+        competition_id = int(cursor_sql_server.fetchone()[0])
+        if 'time' in result:
+            insert_str = "insert into result (person_id, time, competition_id) values ('{}', '{}', '{}')" \
+                        "".format(person_id, result['time'], competition_id)
+        else:
+            insert_str = "insert into result (person_id, competition_id) values ('{}', '{}')" \
+                         "".format(person_id, competition_id)
+        try:
+            cursor_sql_server.execute(insert_str)
+        except(pyodbc.IntegrityError):
+            print('Ошибка вставки результата в таблицу result!')
+        conn_sql_server.commit()
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-results = parser_excel_first_type (excel_file)
-# insert_style(results)
-# insert_city(results)
-# insert_club(results)
-# insert_event(results)
-# insert_competition(results)
+results = parser_excel_first_type(excel_file)
+insert_ranks(ranks)
+insert_gender()
+insert_style(results)
+insert_country(results)
+insert_city(results)
+insert_club(results)
+insert_event(results)
+insert_competition(results)
 insetr_person(results)
+insert_result(results)
