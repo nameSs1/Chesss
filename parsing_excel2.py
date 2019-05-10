@@ -3,28 +3,55 @@ import pyodbc
 
 
 driver_excel = '{Microsoft Excel Driver (*.xls, *.xlsx, *.xlsm, *.xlsb)}'
-location_excel = 'D:\\for SQL Server\\excel_person.xls'
+location_excel = 'D:\\for SQL Server\\copy2.xlsx'  # copy2.xlsx  excel_person2.xls
 excel_list = '[Лист1$]'  # [ПРОТОКОЛ$] или [Лист1$]
 driver_sql = '{SQL Server}'
 server_sql = 'DESKTOP-NE8ID00\\SQLSERVER'
 database_sql = 'swimming_competitions'
 ranks = [None, '2юн', '1юн', '3', '2', '1', 'кмс', 'мс', 'мсмк', 'змс']
+nambers_0_to_9 = '1234567890'
+
+
+def edit_excel():  # Правка экселя, для правильной интерпритации значения столбцов НЕ РАБОТАЕТ!!!
+    connection_str_excel = "DRIVER={};DBQ={};".format(driver_excel, location_excel)
+    conn_excel = pyodbc.connect(connection_str_excel, autocommit=True, ReadOnly = 0)
+    cursor_excel = conn_excel.cursor()   # insert into city (title_city) values ('{}'
+    # sstr_list = tuple(('строка ' * 7).split())
+    insert_str = "insert into {} (A, B, C, D, E, F, G) values ('{}', '{}', '{}', '{}', '{}', '{}', '{}')" \
+                 "".format(excel_list, 'строка ')
+    cursor_excel.execute(insert_str)
+    conn_excel.close()
+
+
+
 
 
 connection_str_excel = "DRIVER={};DBQ={};".format(driver_excel, location_excel)
-connection_str_sql_server = "Driver={}; Server={}; Database={};".format(driver_sql, server_sql, database_sql)
-conn_excel = pyodbc.connect(connection_str_excel, autocommit=True)
+conn_excel = pyodbc.connect(connection_str_excel, autocommit=True, MaxScanRows=8)
 cursor_excel = conn_excel.cursor()
 select_from_excel_str = "Select * From {}".format(excel_list)
 cursor_excel.execute(select_from_excel_str)
 excel_file = cursor_excel.fetchall()
+
+connection_str_sql_server = "Driver={}; Server={}; Database={};".format(driver_sql, server_sql, database_sql)
 conn_sql_server = pyodbc.connect(connection_str_sql_server)
 cursor_sql_server = conn_sql_server.cursor()
 
-# if len(excel_file[0]) == 12:
-#     type_file = 1
-# elif len(excel_file[0]) == 9:
-#     type_file = 2
+
+def create_string_for_sql(dictionary, table_name):  # Принимает словарь и название таблицы. Формирует сторку для SQL
+    count_key = len(dictionary)
+    string_one = "isert into {} (".format(table_name)
+    string_two = ")  values ("
+    keys_and_values = tuple(dictionary.items())
+    columns = [(str(k[0]) + ",") for k in keys_and_values]
+    columns[-1] = columns[-1].rstrip(',')
+    values = [("'" + str(k[1]) + "',") for k in keys_and_values]
+    values[-1] = values[-1].rstrip(',')
+    columns = ' '.join(columns)
+    values = ' '.join(values)
+    string_finish = string_one + columns + string_two + values + ")"
+    return string_finish
+
 
 def get_time(string):
     if string != 'дисквал.':
@@ -37,6 +64,14 @@ def get_time(string):
         return '00:' + string
     else:
         return None
+
+
+def get_time_second(raw_time):  # Преобразует время для второго экселя
+    raw_time = raw_time.replace(",", ".")
+    raw_time = raw_time.replace(":", ".")
+    if raw_time.count(".") == 2:
+        raw_time = raw_time.replace(".", ":", 1)
+    return raw_time
 
 
 def rang_pars (rang_str):  # Прреобразует разряды к одному типу
@@ -118,6 +153,103 @@ def parser_excel_first_type (excel_file):
     return results
 
 
+def parser_excel_second_type(excel_file):
+    event = dict.fromkeys(['title_event', 'date_event', 'city_event', 'pool'])
+    event['title_event'] = 'Протокол '
+    competition = dict.fromkeys(['gender', 'distance', 'style', 'birth_year_comp', 'day_comp'])
+    results = []
+    i = 0
+    payment_falg = True
+    for string in excel_file:
+        string = tuple(string)
+        none = string.count(None)
+        if none == 1 or none == 4 or none == 5 or none == 6 or none == 9:
+            continue
+        if none == 7 and i < 3:
+            i += 1
+            event['title_event'] += string[1]
+            continue
+        if payment_falg:  # Парсинг данных event
+            before = event['title_event'].index('г.')
+            title_event = event['title_event'][:before]
+            event['title_event'] = event['title_event'].split(',')
+            for element in event['title_event']:
+                if 'г.' in element:
+                    i = (element.index('г.') + 2)
+                    event['city_event'] = element[i:]
+                elif 'бассейн' in element:
+                    pool = [n for n in element if n in nambers_0_to_9]
+                    event['pool'] = int(''.join(pool))
+            event_date = (str(event['title_event'][-2][:2]) + str(event['title_event'][-2][-8:])).split('.')
+            event_date.reverse()
+            event['date_event'] = '-'.join(event_date)
+            event['title_event'] = title_event
+            payment_falg = False
+        if none == 8:  # Строки с днями и competitions
+            string = string[1]
+            if 'день' in string:
+                competition['day_comp'] = string[:6]
+                continue
+            else:
+                string = string.split()
+                for j, v in enumerate(string, start=1):
+                    if j == 1:
+                        if v == 'Девушки' or v == 'Девочки':
+                            competition['gender'] = 'Ж'
+                        else:
+                            competition['gender'] = 'М'
+                        continue
+                    elif j == 2:
+                        if len(v) < 5:
+                            competition['birth_year_comp'] = int(v)
+                        elif len(v) == 8:
+                            competition['birth_year_comp'] = int(v[:4])
+                        else:
+                            competition['birth_year_comp'] = int(v[5:9])
+                        continue
+                    if '0' in v:
+                        nine = ('1234567890')
+                        distance = [namber for namber in v if namber in nine]
+                        competition['distance'] = int(''.join(distance))
+                        break
+                style = []
+                if '0' not in string[-2]:
+                    style.append(string[-2])
+                style.append(string[-1])
+                competition['style'] = ' '.join(style)
+                continue
+        if none > 3:
+            continue
+        name = string[1].split()
+        year = int('20' + str(string[2]))
+        city_club = string[3].split(',', 1)
+        if 'Гомель' in city_club[0]:
+            city = 'Гомель'
+        else:
+            city = city_club[0]
+        if len(city_club) == 2:
+            club = city_club[1]
+        else:
+            club = None
+        country = string[4]
+        if none == 3:
+            time = None
+        else:
+            time = get_time_second(string[5])
+        if string[6] is None:
+            points = None
+        else:
+            points = int(string[6])
+        keys = ['firstname', 'lastname', 'birth_year', 'country', 'city', 'club', 'time', 'points']
+        values = (name[1], name[0], year, country, city, club, time, points)
+        result = {k: v for k, v in zip(keys, values) if v is not None}
+        result.update(competition)
+        result.update(event)
+        results.append(result)
+    return results
+
+
+
 def insert_ranks(ranks):  # Таблица rank, колонка rank_value, primary_right
     primary_right = 0
     for rank in ranks:
@@ -126,7 +258,7 @@ def insert_ranks(ranks):  # Таблица rank, колонка rank_value, prim
             cursor_sql_server.execute(insert_rank_str)
         except (pyodbc.IntegrityError):
             str_error = "Ошибка при добовлении разряда {} в таблицу rank!".format(rank)
-            print(str_error)
+            # print(str_error)
         conn_sql_server.commit()
         primary_right += 1
 
@@ -139,7 +271,7 @@ def insert_gender():
             cursor_sql_server.execute(insert_gender_str)
         except (pyodbc.IntegrityError):
             str_error = "Ошибка при добовлении title_gender '{}' в таблицу gender!".format(gender)
-            print(str_error)
+            # print(str_error)
         conn_sql_server.commit()
 
 
@@ -152,7 +284,7 @@ def insert_style(results):  # Таблица style, колонка title_style
             cursor_sql_server.execute(insert_style_str)
         except (pyodbc.IntegrityError):
             str_error = "Ошибка при добовлении title_style '{}' в таблицу style!".format(style)
-            print(str_error)
+            # print(str_error)
         conn_sql_server.commit()
 
 
@@ -235,7 +367,7 @@ def insert_club(results):  # Таблица club, колонки title_club и c
                 cursor_sql_server.execute(insert_str)
             except (pyodbc.IntegrityError):
                 str_error = "Ошибка при добовлении club '{}' в таблицу club!".format(club[0])
-                print(str_error)
+                # print(str_error)
             conn_sql_server.commit()
 
 
@@ -265,7 +397,7 @@ def insert_event(results):  # Таблица event, колонки title_event, 
             except (pyodbc.IntegrityError):
                 str_error = "Ошибка при добовлении event '{}', '{}', '{}', '{}' в таблицу" \
                             " event!".format(event[0], event[1], city_id, event[3])
-                print(str_error)
+                # print(str_error)
             conn_sql_server.commit()
 
 
@@ -450,6 +582,7 @@ def insert_result(results):  # result_id, person_id, time, competition_id
         cursor_sql_server.execute(select)
         competition_id = int(cursor_sql_server.fetchone()[0])
         if 'time' in result:
+            if
             insert_str = "insert into result (person_id, time, competition_id) values ('{}', '{}', '{}')" \
                         "".format(person_id, result['time'], competition_id)
         else:
@@ -458,18 +591,25 @@ def insert_result(results):  # result_id, person_id, time, competition_id
         try:
             cursor_sql_server.execute(insert_str)
         except(pyodbc.IntegrityError):
-            print('Ошибка вставки результата в таблицу result!')
+            pass
+            # print('Ошибка вставки результата в таблицу result!')
         conn_sql_server.commit()
 
 
-results = parser_excel_first_type(excel_file)
-insert_ranks(ranks)
-insert_gender()
-insert_style(results)
-insert_country(results)
-insert_city(results)
-insert_club(results)
-insert_event(results)
-insert_competition(results)
-insetr_person(results)
-insert_result(results)
+if len(excel_file[0]) == 12:
+    results = parser_excel_first_type(excel_file)
+elif len(excel_file[0]) == 9:
+    results = parser_excel_second_type(excel_file)
+# insert_ranks(ranks)
+# insert_gender()
+# insert_style(results)
+# insert_country(results)
+# insert_city(results)
+# insert_club(results)
+# insert_event(results)
+# insert_competition(results)
+# insetr_person(results)
+# insert_result(results)
+
+conn_excel.close()
+conn_sql_server.close()
