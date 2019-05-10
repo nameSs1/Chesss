@@ -3,7 +3,7 @@ import pyodbc
 
 
 driver_excel = '{Microsoft Excel Driver (*.xls, *.xlsx, *.xlsm, *.xlsb)}'
-location_excel = 'D:\\for SQL Server\\copy2.xlsx'  # copy2.xlsx  excel_person2.xls
+location_excel = 'D:\\for SQL Server\\excel_person.xls'  # copy2.xlsx  excel_person2.xls  excel_person.xls
 excel_list = '[Лист1$]'  # [ПРОТОКОЛ$] или [Лист1$]
 driver_sql = '{SQL Server}'
 server_sql = 'DESKTOP-NE8ID00\\SQLSERVER'
@@ -40,7 +40,7 @@ cursor_sql_server = conn_sql_server.cursor()
 
 def create_string_for_sql(dictionary, table_name):  # Принимает словарь и название таблицы. Формирует сторку для SQL
     count_key = len(dictionary)
-    string_one = "isert into {} (".format(table_name)
+    string_one = "insert into {} (".format(table_name)
     string_two = ")  values ("
     keys_and_values = tuple(dictionary.items())
     columns = [(str(k[0]) + ",") for k in keys_and_values]
@@ -71,6 +71,12 @@ def get_time_second(raw_time):  # Преобразует время для вт�
     raw_time = raw_time.replace(":", ".")
     if raw_time.count(".") == 2:
         raw_time = raw_time.replace(".", ":", 1)
+    if (raw_time.index('.') + 2) == len(raw_time):
+        raw_time += '0'
+    if len(raw_time) == 5:
+        raw_time = '00:00:' + raw_time
+    else:
+        raw_time = '00:0' + raw_time
     return raw_time
 
 
@@ -188,7 +194,7 @@ def parser_excel_second_type(excel_file):
         if none == 8:  # Строки с днями и competitions
             string = string[1]
             if 'день' in string:
-                competition['day_comp'] = string[:6]
+                competition['day_comp'] = int(string[0])
                 continue
             else:
                 string = string.split()
@@ -208,7 +214,7 @@ def parser_excel_second_type(excel_file):
                             competition['birth_year_comp'] = int(v[5:9])
                         continue
                     if '0' in v:
-                        nine = ('1234567890')
+                        nine = '1234567890'
                         distance = [namber for namber in v if namber in nine]
                         competition['distance'] = int(''.join(distance))
                         break
@@ -298,7 +304,10 @@ def insert_country(results):  # Таблица country
             answer = cursor_sql_server.fetchone()  # Узнаем есть ли страна в таблице country
             if answer is None:  # Если страны нет, то вставляем ее
                 insert_str = "insert into country (abbreviation) values ('{}')".format(country)
-                cursor_sql_server.execute(insert_str)
+                try:
+                    cursor_sql_server.execute(insert_str)
+                except (pyodbc.IntegrityError):
+                    pass
                 conn_sql_server.commit()
 
 
@@ -584,7 +593,7 @@ def insert_result(results):  # result_id, person_id, time, competition_id
         dictionary = {"person_id": person_id, "competition_id": competition_id}  # Формируеться словарь для ...
         if 'time' in result:    # Формируеться словарь для create_string_for_sql
             dictionary.update({'time': result['time']})
-        if 'time' in result:
+        if 'points' in result:
             dictionary.update({"points": result["points"]})
         insert_str = create_string_for_sql(dictionary, "result")
         try:
