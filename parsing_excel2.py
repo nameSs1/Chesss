@@ -581,13 +581,12 @@ def insert_result(results):  # result_id, person_id, time, competition_id
                                                 'event_id', event_id)
         cursor_sql_server.execute(select)
         competition_id = int(cursor_sql_server.fetchone()[0])
+        dictionary = {"person_id": person_id, "competition_id": competition_id}  # Формируеться словарь для ...
+        if 'time' in result:    # Формируеться словарь для create_string_for_sql
+            dictionary.update({'time': result['time']})
         if 'time' in result:
-            if
-            insert_str = "insert into result (person_id, time, competition_id) values ('{}', '{}', '{}')" \
-                        "".format(person_id, result['time'], competition_id)
-        else:
-            insert_str = "insert into result (person_id, competition_id) values ('{}', '{}')" \
-                         "".format(person_id, competition_id)
+            dictionary.update({"points": result["points"]})
+        insert_str = create_string_for_sql(dictionary, "result")
         try:
             cursor_sql_server.execute(insert_str)
         except(pyodbc.IntegrityError):
@@ -600,16 +599,16 @@ if len(excel_file[0]) == 12:
     results = parser_excel_first_type(excel_file)
 elif len(excel_file[0]) == 9:
     results = parser_excel_second_type(excel_file)
-# insert_ranks(ranks)
-# insert_gender()
-# insert_style(results)
-# insert_country(results)
-# insert_city(results)
-# insert_club(results)
-# insert_event(results)
-# insert_competition(results)
-# insetr_person(results)
-# insert_result(results)
+insert_ranks(ranks)
+insert_gender()
+insert_style(results)
+insert_country(results)
+insert_city(results)
+insert_club(results)
+insert_event(results)
+insert_competition(results)
+insetr_person(results)
+insert_result(results)
 
 conn_excel.close()
 conn_sql_server.close()
