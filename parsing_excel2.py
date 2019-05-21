@@ -3,7 +3,7 @@ import pyodbc
 
 
 driver_excel = '{Microsoft Excel Driver (*.xls, *.xlsx, *.xlsm, *.xlsb)}'
-location_excel = 'D:\\for SQL Server\\excel_person.xls'  # copy2.xlsx  excel_person2.xls  excel_person.xls
+location_excel = 'D:\\for SQL Server\\copy2.xlsx'  # copy2.xlsx  excel_person2.xls  excel_person.xls
 excel_list = '[Лист1$]'  # [ПРОТОКОЛ$] или [Лист1$]
 driver_sql = '{SQL Server}'
 server_sql = 'DESKTOP-NE8ID00\\SQLSERVER'
@@ -14,16 +14,13 @@ nambers_0_to_9 = '1234567890'
 
 def edit_excel():  # Правка экселя, для правильной интерпритации значения столбцов НЕ РАБОТАЕТ!!!
     connection_str_excel = "DRIVER={};DBQ={};".format(driver_excel, location_excel)
-    conn_excel = pyodbc.connect(connection_str_excel, autocommit=True, ReadOnly = 0)
+    conn_excel = pyodbc.connect(connection_str_excel, autocommit=True, ReadOnly=0)
     cursor_excel = conn_excel.cursor()   # insert into city (title_city) values ('{}'
     # sstr_list = tuple(('строка ' * 7).split())
     insert_str = "insert into {} (A, B, C, D, E, F, G) values ('{}', '{}', '{}', '{}', '{}', '{}', '{}')" \
                  "".format(excel_list, 'строка ')
     cursor_excel.execute(insert_str)
     conn_excel.close()
-
-
-
 
 
 connection_str_excel = "DRIVER={};DBQ={};".format(driver_excel, location_excel)
@@ -36,6 +33,18 @@ excel_file = cursor_excel.fetchall()
 connection_str_sql_server = "Driver={}; Server={}; Database={};".format(driver_sql, server_sql, database_sql)
 conn_sql_server = pyodbc.connect(connection_str_sql_server)
 cursor_sql_server = conn_sql_server.cursor()
+
+
+def style_unification(style):  # приведение к одному виду
+    if style == 'батт.':
+        style = 'баттерфляй'
+    elif style == 'в/ст':
+        style = 'вольный стиль'
+    elif style == 'к/пл':
+        style = 'комплексное плавание'
+    elif style == 'н/сп':
+        style = 'на спине'
+    return style
 
 
 def create_string_for_sql(dictionary, table_name):  # Принимает словарь и название таблицы. Формирует сторку для SQL
@@ -126,7 +135,7 @@ def parser_excel_first_type (excel_file):
             else:
                 list_comp = string.split()
                 competition['distance'] = int(list_comp[0])
-                competition['style'] = list_comp[1]
+                competition['style'] = style_unification(list_comp[1])
                 if list_comp[2] == 'девочки':
                     competition['gender'] = 'Ж'
                 else:
@@ -138,6 +147,8 @@ def parser_excel_first_type (excel_file):
             year = int(string[2])
             city_club = string[4].split(',', 1)
             city = city_club[0]
+            if city == 'Могилёв':  # Костыль для буквы Ё
+                city = 'Могилев'
             if len(city_club) == 2:
                 club = city_club[1].lstrip()
             else:
@@ -253,7 +264,6 @@ def parser_excel_second_type(excel_file):
         result.update(event)
         results.append(result)
     return results
-
 
 
 def insert_ranks(ranks):  # Таблица rank, колонка rank_value, primary_right
